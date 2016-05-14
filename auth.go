@@ -123,7 +123,7 @@ func (a Authorizer) Login(rw http.ResponseWriter, req *http.Request, u string, p
 		return mkerror("already authenticated")
 	}
 	if user, err := a.backend.User(u); err == nil {
-		unhashed := byte{}
+		unhashed := []byte{}
 		unhashed = append(unhashed, user.Salt...)
 		unhashed = append(unhashed, []byte(p)...)
 		verify := bcrypt.CompareHashAndPassword(user.Hash, unhashed)
