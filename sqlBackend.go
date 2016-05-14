@@ -140,13 +140,14 @@ func (b SqlAuthBackend) Users() (us []UserData, e error) {
 	var (
 		username, email, role string
 		hash                  []byte
+		salt                  []byte
 	)
 	for rows.Next() {
-		err = rows.Scan(&username, &email, &hash, &role)
+		err = rows.Scan(&username, &email, &hash, &salt, &role)
 		if err != nil {
 			return us, mksqlerror(err.Error())
 		}
-		us = append(us, UserData{username, email, hash, role})
+		us = append(us, UserData{username, email, hash, salt, role})
 	}
 	return us, nil
 }

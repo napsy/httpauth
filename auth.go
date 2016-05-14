@@ -208,13 +208,13 @@ func (a Authorizer) Register(rw http.ResponseWriter, req *http.Request, user Use
 }
 
 func passwordSalt(password string) ([]byte, []byte, error) {
-	salt = make([]byte, 8)
+	salt := make([]byte, 8)
 	if _, err := rand.Read(salt); err != nil {
 		return nil, nil, err
 	}
 	salted := []byte{}
-	salted = append(unhased, salt...)
-	salted = append(unhased, byte(password)...)
+	salted = append(salted, salt...)
+	salted = append(salted, []byte(password)...)
 	return salt, salted, nil
 }
 
@@ -230,11 +230,12 @@ func passwordSalt(password string) ([]byte, []byte, error) {
 //    if a new email is passedn then it updates it.
 func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, u string, p string, e string) error {
 	var (
-		hash     []byte
-		salt     []byte
-		email    string
-		username string
-		ok       bool
+		hash           []byte
+		salt           []byte
+		saltedPassword []byte
+		email          string
+		username       string
+		ok             bool
 	)
 	if u != "" {
 		username = u
@@ -256,7 +257,7 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, u string, 
 		return mkerror(err.Error())
 	}
 	if p != "" {
-		salt, saltedPassword, err = saltedPassword(p)
+		salt, saltedPassword, err = passwordSalt(p)
 		if err != nil {
 			return mkerror(err.Error())
 		}
