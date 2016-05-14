@@ -124,8 +124,8 @@ func (a Authorizer) Login(rw http.ResponseWriter, req *http.Request, u string, p
 	}
 	if user, err := a.backend.User(u); err == nil {
 		unhashed := []byte{}
-		unhashed = append(unhashed, user.Salt)
-		unhashed = append(unhashed, []byte(p))
+		unhashed = append(unhashed, user.Salt...)
+		unhashed = append(unhashed, []byte(p)...)
 		verify := bcrypt.CompareHashAndPassword(user.Hash, unhashed)
 		if verify != nil {
 			a.addMessage(rw, req, "Invalid username or password.")
