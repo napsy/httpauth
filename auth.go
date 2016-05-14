@@ -19,6 +19,7 @@
 package httpauth
 
 import (
+	"crypto/rand"
 	"errors"
 	"net/http"
 
@@ -177,8 +178,13 @@ func (a Authorizer) Register(rw http.ResponseWriter, req *http.Request, user Use
 		return nil
 	}
 
+	salt, saltedPassword, err := passwordSalt(password)
+	if err != nil {
+		return mkerror(err.Error())
+	}
+	user.Salt = salt
 	// Generate and save hash
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword(saltedPassword, bcrypt.DefaultCost)
 	if err != nil {
 		return mkerror("couldn't save password: " + err.Error())
 	}
@@ -201,6 +207,17 @@ func (a Authorizer) Register(rw http.ResponseWriter, req *http.Request, user Use
 	return nil
 }
 
+func passwordSalt(password string) ([]byte, []byte, error) {
+	salt = make([]byte, 8)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, nil, err
+	}
+	salted := []byte{}
+	salted = append(unhased, salt...)
+	salted = append(unhased, byte(password)...)
+	return salt, salted, nil
+}
+
 // Update changes data for an existing user.
 // The behavior of the update varies depending on how the arguments are passed:
 //  If an empty username u is passed then it updates the current user from the session
@@ -214,6 +231,7 @@ func (a Authorizer) Register(rw http.ResponseWriter, req *http.Request, user Use
 func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, u string, p string, e string) error {
 	var (
 		hash     []byte
+		salt     []byte
 		email    string
 		username string
 		ok       bool
@@ -238,7 +256,11 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, u string, 
 		return mkerror(err.Error())
 	}
 	if p != "" {
-		hash, err = bcrypt.GenerateFromPassword([]byte(p), bcrypt.DefaultCost)
+		salt, saltedPassword, err = saltedPassword(p)
+		if err != nil {
+			return mkerror(err.Error())
+		}
+		hash, err = bcrypt.GenerateFromPassword(saltedPassword, bcrypt.DefaultCost)
 		if err != nil {
 			return mkerror("couldn't save password: " + err.Error())
 		}
@@ -250,8 +272,9 @@ func (a Authorizer) Update(rw http.ResponseWriter, req *http.Request, u string, 
 	} else {
 		email = user.Email
 	}
+	salt = user.Salt
 
-	newuser := UserData{username, email, hash, user.Role}
+	newuser := UserData{username, email, hash, salt, user.Role}
 
 	err = a.backend.SaveUser(newuser)
 	if err != nil {
